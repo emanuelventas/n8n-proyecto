@@ -1,34 +1,28 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
-const axios = require('axios');
-require('dotenv').config();
+    const qrcode = require('qrcode-terminal');
+    const open = require('open');
 
-const client = new Client({
-    authStrategy: new LocalAuth({ dataPath: './session' }),
-    puppeteer: {
-        args: ['--no-sandbox'],
-        headless: true
-    }
-});
-
-client.on('qr', qr => {
     qrcode.generate(qr, { small: true });
-    console.log('📲 Escanea el código QR para conectar tu WhatsApp');
+
+    const qrImageURL = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qr)}`;
+    open(qrImageURL);
+
+    console.log('📲 Escanea el código QR en el navegador o la consola para conectar tu WhatsApp');
 });
 
+});
 client.on('ready', () => {
     console.log('✅ Bot conectado a WhatsApp');
 });
-
 client.on('message', async msg => {
     console.log(`📩 Mensaje recibido de ${msg.from}: ${msg.body}`);
 
     await axios.post(process.env.WEBHOOK_N8N, {
         from: msg.from,
         body: msg.body
-    });
+   });
 });
-
 client.initialize();
+
 
 
