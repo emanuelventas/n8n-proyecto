@@ -1,4 +1,3 @@
-// src/index.js
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const open = require('open');
@@ -14,37 +13,38 @@ const client = new Client({
     }
 });
 
-// Evento: Mostrar QR
+// Mostrar QR cuando se genera
 client.on('qr', qr => {
-    // Mostrar QR pequeño en consola
+    // Mostrar en consola (pequeño)
     qrcode.generate(qr, { small: true });
 
-    // También mostrar el QR en el navegador
+    // Abrir en el navegador como imagen compacta
     const qrImageURL = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qr)}`;
     open(qrImageURL);
 
-    console.log('📲 Escanea el código QR en el navegador o consola para conectar tu WhatsApp');
+    console.log("📲 Escanea el código QR desde tu celular para conectar WhatsApp");
 });
 
-// Evento: Conexión lista
+// Confirmación cuando está listo
 client.on('ready', () => {
-    console.log('✅ Bot conectado a WhatsApp');
+    console.log('✅ Bot conectado a WhatsApp correctamente');
 });
 
-// Evento: Mensaje recibido
+// Escuchar mensajes entrantes
 client.on('message', async msg => {
     console.log(`📩 Mensaje recibido de ${msg.from}: ${msg.body}`);
 
-    // Enviar a n8n vía Webhook
-    await axios.post(process.env.WEBHOOK_N8N, {
-        from: msg.from,
-        body: msg.body
-    });
+    // Enviar a n8n si está configurado
+    if (process.env.WEBHOOK_N8N) {
+        await axios.post(process.env.WEBHOOK_N8N, {
+            from: msg.from,
+            body: msg.body
+        });
+    }
 });
 
 // Iniciar cliente
 client.initialize();
-
 
 
 
