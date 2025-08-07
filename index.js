@@ -1,10 +1,8 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
-const open = require('open');
 const axios = require('axios');
 require('dotenv').config();
 
-// Crear cliente de WhatsApp
+// Crear cliente usando sesión guardada
 const client = new Client({
     authStrategy: new LocalAuth({ dataPath: './session' }),
     puppeteer: {
@@ -13,37 +11,26 @@ const client = new Client({
     }
 });
 
-// Mostrar QR cuando se genera
-client.on('qr', qr => {
-    // Mostrar en consola (pequeño)
-    qrcode.generate(qr, { small: true });
-
-    // Abrir en el navegador como imagen compacta
-    const qrImageURL = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qr)}`;
-    open(qrImageURL);
-
-    console.log("📲 Escanea el código QR desde tu celular para conectar WhatsApp");
-});
-
 // Confirmación cuando está listo
 client.on('ready', () => {
-    console.log('✅ Bot conectado a WhatsApp correctamente');
+    console.log('✅ Bot conectado desde Render con sesión guardada.');
 });
 
-// Escuchar mensajes entrantes
+// Escuchar mensajes y reenviar a n8n
 client.on('message', async msg => {
     console.log(`📩 Mensaje recibido de ${msg.from}: ${msg.body}`);
 
-    // Enviar a n8n si está configurado
     if (process.env.WEBHOOK_N8N) {
-        await axios.post(process.env.WEBHOOK_N8N, {
-            from: msg.from,
-            body: msg.body
-        });
+        try {
+            await axios.post(process.env.WEBHOOK_N8N, {
+                from: msg.from,
+                body: msg.body
+            });
+            console.log('📤 Enviado a n8n correctamente.');
+        } catch (err) {
+            console.error('❌ Error al enviar a n8n:', err.message);
+        }
     }
 });
 
-// Iniciar cliente
 client.initialize();
-
-          
