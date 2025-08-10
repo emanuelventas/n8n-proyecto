@@ -37,4 +37,5 @@ client.on('message', async message => {
 });
 
 client.initialize();
-  este si est abien 
+  
+
