@@ -1,36 +1,40 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const axios = require('axios');
-require('dotenv').config();
 
-// Crear cliente usando sesión guardada
+// URL de tu webhook de n8n (reemplaza con tu URL real)
+const N8N_WEBHOOK_URL = 'https://n8n-render-1-mp3q.onrender.com/webhook-test/9ee79575-0822-46c3-8da9-8114462262ab';
+
+// Cliente de WhatsApp con sesión guardada
 const client = new Client({
-    authStrategy: new LocalAuth({ dataPath: './session' }),
-    puppeteer: {
-        args: ['--no-sandbox'],
-        headless: true
-    }
+    authStrategy: new LocalAuth({
+        dataPath: './sesion'
+    })
 });
 
-// Confirmación cuando está listo
 client.on('ready', () => {
-    console.log('✅ Bot conectado desde Render con sesión guardada.');
+    console.log('Bot conectado a WhatsApp y listo para enviar mensajes a n8n');
 });
 
-// Escuchar mensajes y reenviar a n8n
-client.on('message', async msg => {
-    console.log(`📩 Mensaje recibido de ${msg.from}: ${msg.body}`);
+// Escucha mensajes entrantes
+client.on('message', async message => {
+    console.log(`Mensaje de ${message.from}: ${message.body}`);
 
-    if (process.env.WEBHOOK_N8N) {
-        try {
-            await axios.post(process.env.WEBHOOK_N8N, {
-                from: msg.from,
-                body: msg.body
-            });
-            console.log('📤 Enviado a n8n correctamente.');
-        } catch (err) {
-            console.error('❌ Error al enviar a n8n:', err.message);
+    try {
+        // Envía el mensaje a n8n
+        const response = await axios.post(N8N_WEBHOOK_URL, {
+            from: message.from,
+            body: message.body
+        });
+
+        // Si n8n responde con texto, lo enviamos de vuelta
+        if (response.data && response.data.reply) {
+            await client.sendMessage(message.from, response.data.reply);
         }
+
+    } catch (error) {
+        console.error('Error enviando mensaje a n8n:', error.message);
     }
 });
 
 client.initialize();
+  este si est abien 
