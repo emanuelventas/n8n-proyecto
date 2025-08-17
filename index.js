@@ -1,50 +1,45 @@
- const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
-const axios = require('axios');
+const express = require("express");
+const { default: makeWASocket, useMultiFileAuthState } = require("@whiskeysockets/baileys");
+const pino = require("pino");
+const axios = require("axios");
 
-// URL de tu webhook de n8n (reemplaza con tu URL real)
-const N8N_WEBHOOK_URL = 'https://n8n-render-1-mp3q.onrender.com/webhook-test/9ee79575-0822-46c3-8da9-8114462262ab';
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Cliente de WhatsApp con sesión guardada
-const client = new Client({
-    authStrategy: new LocalAuth({
-        clientId: 'bot-wa'
-    }),
-    webVersionCache: {
-        type: 'remote',
-        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2413.51-beta.html',
+async function startBot() {
+  const { state, saveCreds } = await useMultiFileAuthState("./auth_info");
+
+  const sock = makeWASocket({
+    logger: pino({ level: "silent" }),
+    printQRInTerminal: true,
+    auth: state,
+  });
+
+  sock.ev.on("creds.update", saveCreds);
+
+  sock.ev.on("messages.upsert", async (m) => {
+    const msg = m.messages[0];
+    if (!msg.message) return;
+
+    const from = msg.key.remoteJid;
+    const body = msg.message.conversation || msg.message.extendedTextMessage?.text || "";
+
+    console.log("📩 Mensaje recibido:", from, body);
+
+    // Enviar a n8n si existe URL configurada
+    if (process.env.N8N_WEBHOOK_URL) {
+      try {
+        await axios.post(process.env.N8N_WEBHOOK_URL, { from, body });
+        console.log("✅ Enviado a n8n");
+      } catch (e) {
+        console.error("❌ Error enviando a n8n:", e.message);
+      }
     }
-});
+  });
+}
 
-// Este evento es el que genera el código QR para iniciar sesión
-client.on('qr', qr => {
-    qrcode.generate(qr, { small: true });
-    console.log('Escanea este código QR con tu WhatsApp (Dispositivos vinculados)');
-});
+startBot();
 
-client.on('ready', () => {
-    console.log('Bot conectado a WhatsApp y listo para enviar mensajes a n8n');
-});
-
-// Escucha mensajes entrantes
-client.on('message', async message => {
-    console.log(`Mensaje de ${message.from}: ${message.body}`);
-
-    try {
-        // Envía el mensaje a n8n
-        const response = await axios.post(N8N_WEBHOOK_URL, {
-            from: message.from,
-            body: message.body
-        });
-
-        // Si n8n responde con texto, lo enviamos de vuelta
-        if (response.data && response.data.reply) {
-            await client.sendMessage(message.from, response.data.reply);
-        }
-
-    } catch (error) {
-        console.error('Error enviando mensaje a n8n:', error.message);
-    }
-});
-
-client.initialize();
+// Render necesita que Express escuche (para que no se apague)
+app.get("/", (req, res) => res.send("✅ Bot de WhatsApp corriendo en Render"));
+app.listen(PORT, () => console.log("🚀 Servidor en puerto", PORT));
