@@ -1,4 +1,5 @@
-const { Client, LocalAuth } = require('whatsapp-web.js');
+ const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
 const axios = require('axios');
 
 // URL de tu webhook de n8n (reemplaza con tu URL real)
@@ -7,8 +8,18 @@ const N8N_WEBHOOK_URL = 'https://n8n-render-1-mp3q.onrender.com/webhook-test/9ee
 // Cliente de WhatsApp con sesión guardada
 const client = new Client({
     authStrategy: new LocalAuth({
-        dataPath: './sesion'
-    })
+        clientId: 'bot-wa'
+    }),
+    webVersionCache: {
+        type: 'remote',
+        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2413.51-beta.html',
+    }
+});
+
+// Este evento es el que genera el código QR para iniciar sesión
+client.on('qr', qr => {
+    qrcode.generate(qr, { small: true });
+    console.log('Escanea este código QR con tu WhatsApp (Dispositivos vinculados)');
 });
 
 client.on('ready', () => {
@@ -37,5 +48,3 @@ client.on('message', async message => {
 });
 
 client.initialize();
-  
-
